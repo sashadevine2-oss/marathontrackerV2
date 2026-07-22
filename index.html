@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sereny Marathon Training</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --ink:#202329;
+    --ink-2:#2B2F36;
+    --paper:#EAEAE7;
+    --signal:#5D7A99;
+    --signal-dim:#3E5164;
+    --slate:#8D95A0;
+    --green:#4CA97A;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--paper);
+    font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+  #app{max-width:520px;margin:0 auto;padding:0 0 60px;}
+
+  header{padding:28px 20px 18px; border-bottom:1px solid rgba(255,255,255,0.08);}
+  .eyebrow{font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--signal); font-weight:700; margin-bottom:6px;}
+  h1{font-size:28px; margin:0; font-weight:800; letter-spacing:-0.02em;}
+  .sub{color:var(--slate); font-size:13px; margin-top:6px;}
+
+  .card{margin:18px 20px; background:var(--ink-2); border-radius:14px; padding:18px; border:1px solid rgba(255,255,255,0.06);}
+  .card.next{background:linear-gradient(155deg, var(--ink-2), #223140); border:1px solid rgba(93,122,153,0.35);}
+  .card-label{font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--slate); margin-bottom:10px;}
+  .big-stat{font-size:38px; font-weight:800; letter-spacing:-0.02em;}
+  .stat-row{display:flex; gap:22px; margin-top:12px;}
+  .stat{flex:1;}
+  .stat .num{font-size:20px; font-weight:700;}
+  .stat .lbl{font-size:11px; color:var(--slate); margin-top:2px;}
+  .workout-desc{margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08); font-size:13px; line-height:1.55; color:#D3D5D8;}
+  .countdown-num{font-size:34px; font-weight:800; letter-spacing:-0.02em;}
+
+  .type-tag{display:inline-block; padding:3px 9px; border-radius:100px; font-size:10.5px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;}
+  .tag-easy{background:rgba(76,169,122,0.18); color:var(--green);}
+  .tag-tempo{background:rgba(93,122,153,0.22); color:#8FB0CC;}
+  .tag-speed{background:rgba(140,120,255,0.18); color:#A895FF;}
+  .tag-long{background:rgba(62,81,100,0.5); color:#A9C4DB;}
+  .tag-race{background:var(--signal); color:#161B20;}
+  .tag-rest{background:rgba(141,149,160,0.18); color:var(--slate);}
+  .tag-unknown{background:rgba(255,200,0,0.18); color:#FFC800;}
+
+  h2.section{font-size:13px; letter-spacing:0.12em; text-transform:uppercase; color:var(--slate); margin:26px 20px 10px; font-weight:700;}
+
+  .log-form{display:flex; flex-direction:column; gap:10px; margin-top:12px;}
+  .log-form input, .log-form textarea{background:var(--ink); border:1px solid rgba(255,255,255,0.12); color:var(--paper); border-radius:8px; padding:10px 12px; font-size:15px; width:100%; font-family:inherit;}
+  .log-form label{font-size:11px; color:var(--slate); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:-4px;}
+  .row2{display:flex; gap:10px;}
+  .row2>div{flex:1;}
+  button{cursor:pointer; border:none; font-family:inherit;}
+  .btn-primary{background:var(--signal); color:#12181C; font-weight:800; padding:12px; border-radius:8px; font-size:15px; width:100%; margin-top:4px;}
+  .btn-primary:disabled{opacity:0.5;}
+  .btn-ghost{background:transparent; color:var(--slate); border:1px solid rgba(255,255,255,0.15); padding:12px; border-radius:8px; font-size:14px; width:100%; margin-top:8px;}
+
+  .history-item{display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.06);}
+  .history-item:last-child{border-bottom:none;}
+  .hi-left{display:flex; flex-direction:column;}
+  .hi-date{font-size:11px; color:var(--slate);}
+  .hi-title{font-size:14px; font-weight:600; margin-top:2px;}
+  .hi-actual{font-size:13px; color:var(--green); margin-top:2px;}
+  .hi-actual.miss{color:var(--slate);}
+  .hi-status{font-size:18px;}
+
+  .coach-panel{white-space:pre-wrap; font-size:14.5px; line-height:1.55; color:#EDEAE3;}
+  .loading-dots::after{content:'...'; animation: dots 1.2s steps(4,end) infinite;}
+  @keyframes dots{0%,20%{content:'.'}40%{content:'..'}60%,100%{content:'...'}}
+
+  .install-note{margin:26px 20px; padding:14px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.15); font-size:12.5px; color:var(--slate); line-height:1.5;}
+  .empty{color:var(--slate); font-size:13px; padding:8px 0;}
+
+  .score-row{display:flex; align-items:center; justify-content:space-between; margin-top:2px;}
+  .score-num{font-size:34px; font-weight:800;}
+  .score-num.good{color:var(--green);}
+  .score-num.mid{color:var(--signal);}
+  .score-lbl{font-size:12px; color:var(--slate); max-width:140px; text-align:right; line-height:1.4;}
+
+  .week-bar-wrap{margin-top:14px;}
+  .week-bar-row{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .week-bar-day{width:30px; font-size:11px; color:var(--slate);}
+  .week-bar-track{flex:1; height:16px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; position:relative;}
+  .week-bar-fill{height:100%; background:var(--signal); border-radius:4px;}
+  .week-bar-planned{position:absolute; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.5);}
+  .week-bar-km{width:70px; font-size:11px; color:var(--slate); text-align:right;}
+
+  .nf100-panel{margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08); display:none;}
+  .nf100-panel.open{display:block;}
+  .nf100-options{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+  .nf100-opt{padding:8px 14px; border-radius:100px; border:1px solid rgba(255,255,255,0.15); background:transparent; color:var(--paper); font-size:13px;}
+  .nf100-opt.selected{background:var(--signal); border-color:var(--signal); color:#12181C; font-weight:700;}
+  .adjustment-card{margin-top:12px; padding:14px; background:rgba(93,122,153,0.10); border:1px solid rgba(93,122,153,0.3); border-radius:10px;}
+  .adjustment-card .adj-title{font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--signal); font-weight:700; margin-bottom:8px;}
+
+  .import-textarea{width:100%; min-height:90px; background:var(--ink); border:1px solid rgba(255,255,255,0.12); color:var(--paper); border-radius:8px; padding:10px 12px; font-size:13px; font-family:ui-monospace,monospace; resize:vertical;}
+  .import-preview{margin-top:12px; max-height:240px; overflow-y:auto;}
+  .import-row{display:flex; justify-content:space-between; font-size:12.5px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06);}
+  .import-row .match{color:var(--green);}
+  .import-row .nomatch{color:var(--slate);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="eyebrow">Marathon Training</div>
+    <h1>Sereny Marathon Training</h1>
+    <div class="sub">Race day: Oct 18, 2026</div>
+  </header>
+
+  <div class="card" id="raceCountdownCard"></div>
+
+  <h2 class="section">Log Today's Run</h2>
+  <div class="card">
+    <div class="log-form">
+      <label>Which session</label>
+      <select id="sessionPicker" style="background:var(--ink); border:1px solid rgba(255,255,255,0.12); color:var(--paper); border-radius:8px; padding:10px 12px; font-size:15px; font-family:inherit;"></select>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:-2px;">
+        <span class="type-tag" id="sessionTypeTag"></span>
+        <div id="sessionDescPreview" style="font-size:12.5px; color:var(--slate); line-height:1.5;"></div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Actual distance (km)</label>
+          <input type="number" step="0.1" id="actualDist" placeholder="e.g. 19.2">
+        </div>
+        <div>
+          <label>Actual pace (min/km)</label>
+          <input type="text" id="actualPace" placeholder="e.g. 5:52">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Average HR (bpm)</label>
+          <input type="number" id="avgHR" placeholder="e.g. 158">
+        </div>
+        <div>
+          <label>Max HR (bpm)</label>
+          <input type="number" id="maxHR" placeholder="e.g. 172">
+        </div>
+      </div>
+      <div id="hrZonePreview" style="font-size:12.5px; color:var(--slate); margin-top:-4px;"></div>
+      <label>How did it feel? (1 easy — 10 brutal)</label>
+      <input type="number" min="1" max="10" id="rpe" placeholder="e.g. 6">
+      <label>Notes (fueling, weather, aches, anything)</label>
+      <textarea id="notes" rows="2" placeholder="Optional"></textarea>
+      <button class="btn-primary" id="saveLogBtn">Save Entry</button>
+    </div>
+  </div>
+
+  <div class="card next" id="nextSessionCard"></div>
+
+  <div class="card">
+    <div class="card-label">Consistency Score</div>
+    <div class="score-row">
+      <div class="score-num" id="consistencyScore">—</div>
+      <div class="score-lbl">% of sessions completed within 10% of planned distance</div>
+    </div>
+  </div>
+
+  <h2 class="section">This Week's Volume</h2>
+  <div class="card">
+    <div class="week-bar-wrap" id="weekBars"></div>
+  </div>
+
+  <h2 class="section">Not Feeling 100%?</h2>
+  <div class="card">
+    <div style="font-size:13px; color:var(--slate);">Tired, sore, sick, or life got in the way? Flag it and get an adjustment for your next session instead of just skipping or pushing through.</div>
+    <button class="btn-ghost" id="nf100Toggle" style="margin-top:12px;">I'm Not Feeling 100%</button>
+    <div class="nf100-panel" id="nf100Panel">
+      <div class="nf100-options" id="nf100Options">
+        <button class="nf100-opt" data-reason="Tired / low energy">Tired</button>
+        <button class="nf100-opt" data-reason="Mild soreness or ache">Sore</button>
+        <button class="nf100-opt" data-reason="Coming down with something / sick">Sick</button>
+        <button class="nf100-opt" data-reason="Busy — short on time today">Short on time</button>
+      </div>
+      <button class="btn-primary" id="getAdjustmentBtn" disabled>Get Adjustment</button>
+      <div id="adjustmentOutput"></div>
+    </div>
+  </div>
+
+  <h2 class="section">Recent History</h2>
+  <div class="card" id="historyCard">
+    <div class="empty">No runs logged yet.</div>
+  </div>
+
+  <h2 class="section">AI Coach</h2>
+  <div class="card">
+    <div style="font-size:13px; color:var(--slate); margin-bottom:12px;">
+      Get advice based on how your training compares to the plan — pacing, fatigue, and what to adjust next.
+    </div>
+    <button class="btn-primary" id="askCoachBtn">Ask Your Coach</button>
+    <div id="coachOutput" style="margin-top:14px;"></div>
+  </div>
+
+  <h2 class="section">Import from Strava</h2>
+  <div class="card">
+    <div style="font-size:13px; color:var(--slate); margin-bottom:10px;">
+      In Strava: Settings → My Account → "Download or Delete Your Account" → request your archive. It emails you a zip containing <span class="mono">activities.csv</span>. Open it, select all, copy, and paste below.
+    </div>
+    <textarea class="import-textarea" id="csvInput" placeholder="Paste activities.csv contents here..."></textarea>
+    <button class="btn-primary" id="parseCsvBtn">Preview Import</button>
+    <div class="import-preview" id="importPreview"></div>
+    <button class="btn-primary" id="confirmImportBtn" style="display:none; background:var(--green); color:#0B2117;">Confirm Import</button>
+  </div>
+
+  <div class="install-note">
+    <strong style="color:var(--paper);">Add to your home screen:</strong> open this page in Safari, tap the Share icon, then "Add to Home Screen." It'll open full-screen like an app, and your data is saved on this device.
+  </div>
+
+</div>
+
+<script>
+// ---------- Schedule (fixed plan) ----------
+const schedule = [
+  {d:"2026-07-21",t:"1km Repeats",type:"speed",dist:7.5,pace:"5:20-6:00",desc:"Warm-up 1.5km easy, then 4x1km at 5K race effort (harder than tempo, controlled hard) with 2min jog recovery between reps, cool-down 1km."},
+  {d:"2026-07-23",t:"Tempo 3-2-1",type:"tempo",dist:9,pace:"5:00-5:33",desc:"Warm-up 2km easy, then a descending tempo ladder: 3min at tempo pace, 2min slightly faster, 1min faster still, jogging 1min between each. Repeat the full 3-2-1 sequence twice, cool-down 2km."},
+  {d:"2026-07-24",t:"Easy Run",type:"easy",dist:9,pace:"5:00-5:33",desc:"Steady aerobic effort, no structure needed. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-07-26",t:"Long Run",type:"long",dist:18,pace:"5:00-5:33",desc:"Continuous easy-paced long run. Purpose is time on feet and aerobic development, not speed — resist the urge to push pace."},
+  {d:"2026-07-28",t:"Easy Run",type:"easy",dist:8,pace:"5:00-5:38",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-07-30",t:"Over and Unders 1km",type:"tempo",dist:10,pace:"4:30-5:30",desc:"Warm-up 2km easy, then 4x1km 'over-unders' — within each km, alternate ~200m slightly faster than marathon pace with ~200m slightly slower, teaching pace control under fatigue. Jog 90sec between reps, cool-down 2km."},
+  {d:"2026-07-31",t:"Easy Run",type:"easy",dist:8,pace:"5:00-5:38",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-08-02",t:"Progressive Long Run",type:"long",dist:20,pace:"4:30-5:30",desc:"20km long run that starts at easy pace for the first ~12km, then gradually drops toward marathon pace for the final ~8km — trains your legs to hold pace as fatigue builds."},
+  {d:"2026-08-04",t:"Tempo 3-2-1",type:"tempo",dist:9,pace:"5:00-5:33",desc:"Warm-up 2km easy, then a descending tempo ladder: 3min at tempo pace, 2min slightly faster, 1min faster still, jogging 1min between each. Repeat the full 3-2-1 sequence twice, cool-down 2km."},
+  {d:"2026-08-06",t:"800m Repeats",type:"speed",dist:11.2,pace:"5:21-6:15",desc:"Warm-up 2km easy, then 6x800m at 5K-10K effort with 2-3min jog recovery between reps, cool-down 2km."},
+  {d:"2026-08-07",t:"Easy Run",type:"easy",dist:7.5,pace:"4:40-6:00",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-08-09",t:"Long Run",type:"long",dist:22,pace:"5:00-5:27",desc:"Continuous easy-paced long run. Purpose is time on feet and aerobic development, not speed — resist the urge to push pace."},
+  {d:"2026-08-11",t:"Easy Run",type:"easy",dist:6.5,pace:"4:37-6:09",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-08-13",t:"Over and Unders 1km",type:"tempo",dist:7,pace:"4:17-5:00",desc:"Warm-up 1.5km easy, then 3x1km 'over-unders' — alternate ~200m slightly faster than marathon pace with ~200m slightly slower within each rep. Jog 90sec between reps, cool-down 1.5km."},
+  {d:"2026-08-14",t:"Easy Run",type:"easy",dist:5.5,pace:"4:33-5:27",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-08-16",t:"Long Run",type:"long",dist:12,pace:"5:00-5:50",desc:"Continuous easy-paced long run. Purpose is time on feet and aerobic development, not speed — resist the urge to push pace."},
+  {d:"2026-08-18",t:"1km Repeats",type:"speed",dist:8,pace:"5:00-6:15",desc:"Warm-up 1.5km easy, then 5x1km at 5K race effort with 2min jog recovery between reps, cool-down 1km."},
+  {d:"2026-08-20",t:"Tempo 2km Repeats",type:"tempo",dist:12,pace:"5:00-5:50",desc:"Warm-up 2km easy, then 3x2km at tempo pace with 2min jog recovery between reps, cool-down 2km."},
+  {d:"2026-08-21",t:"Easy Run",type:"easy",dist:8,pace:"5:00-5:38",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-08-23",t:"Long Run",type:"long",dist:25,pace:"4:48-5:36",desc:"Continuous easy-paced long run. Purpose is time on feet and aerobic development, not speed — resist the urge to push pace."},
+  {d:"2026-08-25",t:"Easy Run",type:"easy",dist:11,pace:"5:00-5:27",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-08-27",t:"Tempo 6km",type:"tempo",dist:9,pace:"4:27-5:33",desc:"Warm-up 1.5km easy, then a continuous 6km block at tempo pace (comfortably hard, sustainable), cool-down 1.5km."},
+  {d:"2026-08-28",t:"Easy Run",type:"easy",dist:10,pace:"5:00-5:30",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-08-30",t:"Race Practice Long Run",type:"long",dist:28,pace:"4:39-5:21",desc:"28km long run — treat it as a race rehearsal. Wear your race-day shoes and kit, and practice your exact fueling plan (1 gel every 30-45min). Run at easy-to-steady pace throughout."},
+  {d:"2026-09-01",t:"Descending Intervals",type:"speed",dist:10.2,pace:"5:24-5:53",desc:"Warm-up 2km easy, then 5x1km intervals where each rep gets progressively faster — start near tempo pace, finish near 5K pace. Jog 90sec-2min between reps, cool-down 2.2km."},
+  {d:"2026-09-03",t:"Progressive Run",type:"tempo",dist:10,pace:"4:30-5:30",desc:"Continuous 10km run split into thirds: first third easy pace, middle third steady/moderate pace, final third at tempo pace. No stopping — effort builds gradually throughout."},
+  {d:"2026-09-04",t:"Easy Run",type:"easy",dist:9,pace:"5:00-5:33",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-09-06",t:"Long Run",type:"long",dist:31,pace:"4:50-5:29",desc:"Continuous easy-paced long run. Purpose is time on feet and aerobic development, not speed — resist the urge to push pace."},
+  {d:"2026-09-08",t:"Easy Run",type:"easy",dist:9,pace:"5:00-5:33",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-09-10",t:"On Off Ks",type:"tempo",dist:7.5,pace:"4:00-5:20",desc:"Warm-up 1km easy, then alternate 1km 'on' at tempo pace with 1km 'off' at easy pace, repeated for 2 full cycles (4km total), cool-down 1.5-2km."},
+  {d:"2026-09-11",t:"Easy Run",type:"easy",dist:5,pace:"5:00-6:00",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-09-13",t:"Long Run (cutback)",type:"long",dist:17,pace:"4:42-5:18",desc:"Cutback week — this shorter long run is intentional recovery, not a step back. Keep it easy and let your legs absorb the last 3 weeks of volume."},
+  {d:"2026-09-15",t:"Progressive Mile Repeats",type:"speed",dist:10,pace:"5:00-6:00",desc:"Warm-up 2km easy, then 4x1mile (1.6km) repeats where each mile gets progressively faster — start at tempo pace, finish at 5K pace. Jog 2-3min between reps, cool-down 1.6km."},
+  {d:"2026-09-17",t:"Tempo 3km Repeats",type:"tempo",dist:11,pace:"4:05-5:00",desc:"Warm-up 2km easy, then 2x3km at tempo pace with 2-3min jog recovery between reps, cool-down 2km."},
+  {d:"2026-09-18",t:"Easy Run",type:"easy",dist:10,pace:"5:00-5:30",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-09-20",t:"Long Run (PEAK)",type:"long",dist:34,pace:"5:00-5:18",desc:"Your longest run of the entire plan. Treat it like race practice: race-day shoes/kit, your exact fueling plan, and pacing discipline all matter here. Nail this one and the race will feel familiar."},
+  {d:"2026-09-22",t:"Easy Run",type:"easy",dist:13,pace:"4:37-5:23",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-09-24",t:"Tempo 4km Repeats",type:"tempo",dist:13,pace:"4:37-5:23",desc:"Warm-up 2km easy, then 2x4km at tempo pace with 3min jog recovery between reps, cool-down 2km."},
+  {d:"2026-09-25",t:"Easy Run",type:"easy",dist:13,pace:"4:37-5:23",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-09-27",t:"Race Practice Long Run",type:"long",dist:31,pace:"4:31-5:10",desc:"31km — your last full race rehearsal before taper. Wear race-day shoes/kit, practice your exact fueling plan, and rehearse your pre-run breakfast and routine."},
+  {d:"2026-09-29",t:"Broken Miles",type:"speed",dist:8,pace:"5:00-6:15",desc:"Warm-up 1.5km easy, then 3x1mile broken into 4x400m per mile at faster-than-tempo effort, jogging 30sec between the 400s and 60-90sec between full miles, cool-down 1.5km. The short breaks let you hold faster pace than a continuous mile repeat."},
+  {d:"2026-10-01",t:"Rolling 300s",type:"tempo",dist:13,pace:"4:37-5:23",desc:"Warm-up 2km easy, then a steady tempo run with 8x300m fast surges (~5K effort) inserted roughly every km, settling back to tempo pace between surges, cool-down 2km."},
+  {d:"2026-10-02",t:"Easy Run",type:"easy",dist:12,pace:"5:00-5:50",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-10-04",t:"Half Marathon Long Run (taper begins)",type:"long",dist:21.1,pace:"4:44-5:13",desc:"21.1km long run at easy pace. Taper begins now — keep this controlled and comfortable rather than pushing pace, even though the distance is substantial."},
+  {d:"2026-10-06",t:"Easy Run",type:"easy",dist:12,pace:"5:00-5:50",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-10-08",t:"Half Easy, Half Tempo",type:"tempo",dist:9,pace:"4:27-5:00",desc:"First 4.5km at easy pace, second 4.5km at tempo pace — no stopping at the halfway point, effort simply steps up."},
+  {d:"2026-10-09",t:"Easy Run",type:"easy",dist:10,pace:"5:00-5:30",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-10-11",t:"Block Long Run (taper)",type:"long",dist:13,pace:"4:37-5:23",desc:"13km long run with a sustained ~5km block at marathon pace embedded in the middle (after an easy 4km start), finishing with an easy 4km. A taper-week reminder of race rhythm without overloading your legs."},
+  {d:"2026-10-13",t:"Easy Run",type:"easy",dist:7,pace:"5:00-5:43",desc:"Steady aerobic effort. Hold the pace range comfortably — should feel conversational throughout."},
+  {d:"2026-10-15",t:"Race Pace Mile Reps",type:"speed",dist:8,pace:"4:22-5:00",desc:"Warm-up 1.5km easy, then 3x1mile at your goal marathon race pace with 90sec jog recovery between reps, cool-down 1.5km. Purpose: locks in race rhythm in the final week."},
+  {d:"2026-10-18",t:"MARATHON RACE DAY",type:"race",dist:42.2,pace:"4:34-4:46",desc:"Race day. Start conservatively for the first 5km — resist the adrenaline surge. Fuel every 30-45min per your practiced plan. Aim for even splits at your target pace; a controlled first half sets up a strong finish."},
+];
+
+const tagClass = {easy:"tag-easy", tempo:"tag-tempo", speed:"tag-speed", long:"tag-long", race:"tag-race", rest:"tag-rest", unknown:"tag-unknown"};
+
+// ---------- Storage adapter: uses Claude's window.storage when available (inside Claude),
+// falls back to real browser localStorage when running standalone (e.g. opened directly in Safari) ----------
+const hasNativeStorage = (typeof window.storage !== 'undefined' && window.storage !== null);
+const storageAdapter = hasNativeStorage ? window.storage : {
+  async get(key, shared){
+    const raw = localStorage.getItem(key);
+    if (raw === null) throw new Error('not found');
+    return {key, value: raw, shared: !!shared};
+  },
+  async set(key, value, shared){
+    localStorage.setItem(key, value);
+    return {key, value, shared: !!shared};
+  },
+  async delete(key, shared){
+    localStorage.removeItem(key);
+    return {key, deleted:true, shared: !!shared};
+  },
+  async list(prefix, shared){
+    const keys = [];
+    for (let i=0; i<localStorage.length; i++){
+      const k = localStorage.key(i);
+      if (!prefix || k.startsWith(prefix)) keys.push(k);
+    }
+    return {keys, prefix, shared: !!shared};
+  }
+};
+
+// ---------- Heart rate zones (Karvonen method: resting 49bpm, est. max 195bpm from age 25) ----------
+const HR_RESTING = 49;
+const HR_MAX = 195;
+const hrZones = [
+  {min:0,   max:121, label:"Below Zone 1 (very light)"},
+  {min:122, max:136, label:"Zone 1 · Recovery"},
+  {min:137, max:150, label:"Zone 2 · Easy / Aerobic"},
+  {min:151, max:165, label:"Zone 3 · Tempo"},
+  {min:166, max:179, label:"Zone 4 · Threshold"},
+  {min:180, max:999, label:"Zone 5 · Max Effort"},
+];
+function getHRZoneLabel(avgHR){
+  if (!avgHR) return '';
+  const z = hrZones.find(z => avgHR >= z.min && avgHR <= z.max);
+  return z ? z.label : '';
+}
+
+// ---------- Race countdown ----------
+function renderRaceCountdown(){
+  const raceDate = "2026-10-18";
+  const today = todayISO();
+  const daysToRace = Math.max(0, Math.ceil((new Date(raceDate+"T12:00:00") - new Date(today+"T12:00:00")) / 86400000));
+  const runsLeft = schedule.filter(s => s.d >= today && s.type !== 'rest' && s.type !== 'race').length;
+  const el = document.getElementById('raceCountdownCard');
+  el.innerHTML = `
+    <div class="card-label">Race Countdown</div>
+    <div class="stat-row">
+      <div class="stat"><div class="countdown-num">${daysToRace}</div><div class="lbl">Days to Race Day</div></div>
+      <div class="stat"><div class="countdown-num">${runsLeft}</div><div class="lbl">Runs Left to Train</div></div>
+    </div>
+  `;
+}
+
+function fmtDate(iso){
+  const d = new Date(iso+"T12:00:00");
+  return d.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'});
+}
+
+function todayISO(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+
+// ---------- Overrides (from "Not Feeling 100%" adjustments) ----------
+async function getOverride(date){
+  try{
+    const r = await storageAdapter.get(`override:${date}`, false);
+    return r ? JSON.parse(r.value) : null;
+  }catch(e){ return null; }
+}
+async function setOverride(date, data){
+  await storageAdapter.set(`override:${date}`, JSON.stringify(data), false);
+}
+async function getEffectiveSession(baseSession){
+  const ov = await getOverride(baseSession.d);
+  if (!ov) return baseSession;
+  return {...baseSession, t: ov.t || baseSession.t, dist: ov.dist ?? baseSession.dist, pace: ov.pace || baseSession.pace, type: ov.type || baseSession.type, adjusted:true};
+}
+
+// ---------- Next session card ----------
+async function renderNextSession(){
+  const today = todayISO();
+  const base = schedule.find(s => s.d >= today) || schedule[schedule.length-1];
+  const next = await getEffectiveSession(base);
+  const el = document.getElementById('nextSessionCard');
+  const daysOut = Math.round((new Date(next.d+"T12:00:00") - new Date(today+"T12:00:00")) / 86400000);
+  const whenLabel = daysOut === 0 ? "TODAY" : daysOut === 1 ? "TOMORROW" : `IN ${daysOut} DAYS`;
+  el.innerHTML = `
+    <div class="card-label">${whenLabel} · ${fmtDate(next.d)} ${next.adjusted ? '· ADJUSTED' : ''}</div>
+    <div class="big-stat">${next.t}</div>
+    <div class="stat-row">
+      <div class="stat"><div class="num">${next.dist > 0 ? next.dist+' km' : '-'}</div><div class="lbl">Distance</div></div>
+      <div class="stat"><div class="num">${next.pace}</div><div class="lbl">Pace /km</div></div>
+      <div class="stat"><span class="type-tag ${tagClass[next.type]}">${next.type}</span></div>
+    </div>
+    ${next.desc ? `<div class="workout-desc">${next.desc}</div>` : ''}
+  `;
+}
+
+// ---------- Session picker ----------
+function updateSessionDescPreview(){
+  const date = document.getElementById('sessionPicker').value;
+  const session = schedule.find(s=>s.d===date);
+  document.getElementById('sessionDescPreview').textContent = session && session.desc ? session.desc : '';
+  const tagEl = document.getElementById('sessionTypeTag');
+  if (session){
+    tagEl.textContent = session.type;
+    tagEl.className = "type-tag " + tagClass[session.type];
+  }
+}
+function renderSessionPicker(){
+  const picker = document.getElementById('sessionPicker');
+  const today = todayISO();
+  picker.innerHTML = schedule.map(s =>
+    `<option value="${s.d}">${fmtDate(s.d)} — ${s.t}</option>`
+  ).join('');
+  const closestPast = [...schedule].reverse().find(s => s.d <= today);
+  if (closestPast) picker.value = closestPast.d;
+  picker.addEventListener('change', updateSessionDescPreview);
+  updateSessionDescPreview();
+}
+
+// ---------- HR zone live preview ----------
+document.getElementById('avgHR').addEventListener('input', ()=>{
+  const val = parseInt(document.getElementById('avgHR').value);
+  const label = getHRZoneLabel(val);
+  document.getElementById('hrZonePreview').textContent = label ? `Effort: ${label}` : '';
+});
+
+// ---------- Storage helpers ----------
+async function getLog(date){
+  try{
+    const r = await storageAdapter.get(`log:${date}`, false);
+    return r ? JSON.parse(r.value) : null;
+  }catch(e){ return null; }
+}
+async function setLog(date, entry){
+  await storageAdapter.set(`log:${date}`, JSON.stringify(entry), false);
+}
+async function getAllLogs(){
+  const logs = [];
+  try{
+    const listRes = await storageAdapter.list('log:', false);
+    const keys = (listRes && listRes.keys) || [];
+    for (const k of keys){
+      try{
+        const r = await storageAdapter.get(k, false);
+        if (r) logs.push(JSON.parse(r.value));
+      }catch(e){}
+    }
+  }catch(e){}
+  return logs.sort((a,b)=> a.date < b.date ? 1 : -1);
+}
+
+// ---------- Save log ----------
+document.getElementById('saveLogBtn').addEventListener('click', async ()=>{
+  const date = document.getElementById('sessionPicker').value;
+  const session = schedule.find(s=>s.d===date);
+  const avgHR = parseInt(document.getElementById('avgHR').value) || null;
+  const maxHR = parseInt(document.getElementById('maxHR').value) || null;
+  const entry = {
+    date,
+    plannedTitle: session.t,
+    plannedDist: session.dist,
+    plannedPace: session.pace,
+    actualDist: parseFloat(document.getElementById('actualDist').value) || null,
+    actualPace: document.getElementById('actualPace').value || null,
+    avgHR,
+    maxHR,
+    hrZone: getHRZoneLabel(avgHR),
+    rpe: parseInt(document.getElementById('rpe').value) || null,
+    notes: document.getElementById('notes').value || ""
+  };
+  const btn = document.getElementById('saveLogBtn');
+  btn.textContent = "Saving...";
+  btn.disabled = true;
+  try{
+    await setLog(date, entry);
+    document.getElementById('actualDist').value = "";
+    document.getElementById('actualPace').value = "";
+    document.getElementById('avgHR').value = "";
+    document.getElementById('maxHR').value = "";
+    document.getElementById('hrZonePreview').textContent = "";
+    document.getElementById('rpe').value = "";
+    document.getElementById('notes').value = "";
+    await renderHistory();
+    await renderConsistencyScore();
+    await renderWeekBars();
+    btn.textContent = "Saved ✓";
+    setTimeout(()=>{ btn.textContent = "Save Entry"; btn.disabled=false; }, 1200);
+  }catch(e){
+    btn.textContent = "Error — try again";
+    btn.disabled = false;
+  }
+});
+
+// ---------- History ----------
+async function renderHistory(){
+  const logs = await getAllLogs();
+  const el = document.getElementById('historyCard');
+  if (logs.length === 0){
+    el.innerHTML = `<div class="empty">No runs logged yet.</div>`;
+    return;
+  }
+  el.innerHTML = logs.slice(0,10).map(l=>{
+    const hit = l.actualDist && l.plannedDist && Math.abs(l.actualDist - l.plannedDist) <= l.plannedDist * 0.1;
+    return `
+      <div class="history-item">
+        <div class="hi-left">
+          <div class="hi-date">${fmtDate(l.date)}</div>
+          <div class="hi-title">${l.plannedTitle}</div>
+          <div class="hi-actual ${hit ? '' : 'miss'}">${l.actualDist ? l.actualDist+'km' : '—'} ${l.actualPace ? '@ '+l.actualPace+'/km' : ''} ${l.rpe ? '· RPE '+l.rpe : ''}</div>
+          ${l.avgHR ? `<div style="font-size:12px; color:var(--slate); margin-top:2px;">${l.avgHR}bpm avg${l.maxHR ? ' / '+l.maxHR+'bpm max' : ''}${l.hrZone ? ' · '+l.hrZone : ''}</div>` : ''}
+        </div>
+        <div class="hi-status">${hit ? '✅' : '⚠️'}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---------- Consistency score ----------
+async function renderConsistencyScore(){
+  const today = todayISO();
+  const logs = await getAllLogs();
+  const pastSessions = schedule.filter(s => s.d < today && s.type !== 'rest');
+  if (pastSessions.length === 0){
+    document.getElementById('consistencyScore').textContent = "—";
+    return;
+  }
+  const logMap = {};
+  logs.forEach(l => logMap[l.date] = l);
+  let hitCount = 0, loggedCount = 0;
+  pastSessions.forEach(s=>{
+    const l = logMap[s.d];
+    if (l && l.actualDist){
+      loggedCount++;
+      if (Math.abs(l.actualDist - s.dist) <= Math.max(s.dist * 0.1, 0.5)) hitCount++;
+    }
+  });
+  const pct = loggedCount > 0 ? Math.round((hitCount / pastSessions.length) * 100) : 0;
+  const scoreEl = document.getElementById('consistencyScore');
+  scoreEl.textContent = pct + "%";
+  scoreEl.className = "score-num " + (pct >= 80 ? "good" : pct >= 50 ? "mid" : "");
+}
+
+// ---------- Weekly volume bars ----------
+function getWeekBounds(dateISO){
+  const d = new Date(dateISO+"T12:00:00");
+  const day = d.getDay(); // 0=Sun
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  const monday = new Date(d); monday.setDate(d.getDate() + diffToMonday);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  return {monday, sunday};
+}
+async function renderWeekBars(){
+  const today = todayISO();
+  const {monday, sunday} = getWeekBounds(today);
+  const logs = await getAllLogs();
+  const logMap = {}; logs.forEach(l => logMap[l.date] = l);
+  const weekSessions = schedule.filter(s=>{
+    const d = new Date(s.d+"T12:00:00");
+    return d >= monday && d <= sunday;
+  });
+  const maxDist = Math.max(...weekSessions.map(s=>s.dist), 1);
+  const el = document.getElementById('weekBars');
+  if (weekSessions.length === 0){ el.innerHTML = `<div class="empty">No sessions this week.</div>`; return; }
+
+  const totalPlanned = weekSessions.reduce((sum,s)=>sum+s.dist, 0);
+  const totalActual = weekSessions.reduce((sum,s)=>{
+    const l = logMap[s.d];
+    return sum + (l && l.actualDist ? l.actualDist : 0);
+  }, 0);
+  const kmToGo = Math.max(Math.round((totalPlanned - totalActual)*10)/10, 0);
+
+  const summaryHtml = `<div style="font-size:14px; color:var(--paper); margin-bottom:14px;"><strong>${kmToGo}km</strong> <span style="color:var(--slate);">to go this week</span> (${Math.round(totalActual*10)/10}/${Math.round(totalPlanned*10)/10}km done)</div>`;
+
+  const barsHtml = weekSessions.map(s=>{
+    const l = logMap[s.d];
+    const actual = l && l.actualDist ? l.actualDist : 0;
+    const fillPct = Math.min((actual / maxDist) * 100, 100);
+    const plannedPct = Math.min((s.dist / maxDist) * 100, 100);
+    const dayLabel = new Date(s.d+"T12:00:00").toLocaleDateString('en-US',{weekday:'short'});
+    return `
+      <div class="week-bar-row">
+        <div class="week-bar-day">${dayLabel}</div>
+        <div class="week-bar-track">
+          <div class="week-bar-fill" style="width:${fillPct}%"></div>
+          <div class="week-bar-planned" style="left:${plannedPct}%"></div>
+        </div>
+        <div class="week-bar-km">${actual || '–'}/${s.dist}km</div>
+      </div>
+    `;
+  }).join('');
+
+  el.innerHTML = summaryHtml + barsHtml;
+}
+
+// ---------- Not Feeling 100% ----------
+let selectedReason = null;
+document.getElementById('nf100Toggle').addEventListener('click', ()=>{
+  document.getElementById('nf100Panel').classList.toggle('open');
+});
+document.getElementById('nf100Options').addEventListener('click', (e)=>{
+  if (!e.target.classList.contains('nf100-opt')) return;
+  document.querySelectorAll('.nf100-opt').forEach(b=>b.classList.remove('selected'));
+  e.target.classList.add('selected');
+  selectedReason = e.target.dataset.reason;
+  document.getElementById('getAdjustmentBtn').disabled = false;
+});
+
+document.getElementById('getAdjustmentBtn').addEventListener('click', async ()=>{
+  if (!selectedReason) return;
+  const btn = document.getElementById('getAdjustmentBtn');
+  const out = document.getElementById('adjustmentOutput');
+  btn.disabled = true; btn.textContent = "Thinking...";
+  out.innerHTML = "";
+
+  const today = todayISO();
+  const nextSession = schedule.find(s => s.d >= today);
+  const recentLogs = (await getAllLogs()).slice(0,5);
+
+  const prompt = `You are a marathon coach. The runner just flagged: "${selectedReason}".
+Their next scheduled session is: ${JSON.stringify(nextSession)}.
+Their recent training log: ${JSON.stringify(recentLogs)}.
+Race day is 2026-10-18, goal pace 4:50/km.
+
+Respond with ONLY valid JSON, no markdown, no backticks, in this exact shape:
+{"message": "1-2 sentence explanation of the adjustment and why, plain text", "adjustedType": "easy|tempo|speed|long|rest", "adjustedDist": number (km), "adjustedPace": "string like 5:45-6:15"}
+Be conservative — when in doubt, reduce intensity or volume rather than push through.`;
+
+  try{
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 500,
+        messages: [{role:"user", content: prompt}]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content || []).map(c=>c.text||"").join("").trim();
+    const clean = text.replace(/```json|```/g,"").trim();
+    const parsed = JSON.parse(clean);
+
+    out.innerHTML = `
+      <div class="adjustment-card">
+        <div class="adj-title">Suggested Adjustment</div>
+        <div style="font-size:14px; margin-bottom:10px;">${parsed.message}</div>
+        <div style="font-size:13px; color:var(--slate); margin-bottom:10px;">
+          New plan for ${fmtDate(nextSession.d)}: <strong style="color:var(--paper);">${parsed.adjustedDist}km ${parsed.adjustedType} @ ${parsed.adjustedPace}/km</strong>
+        </div>
+        <button class="btn-primary" id="applyAdjBtn">Apply to Next Session</button>
+      </div>
+    `;
+    document.getElementById('applyAdjBtn').addEventListener('click', async ()=>{
+      await setOverride(nextSession.d, {
+        t: `${parsed.adjustedType.charAt(0).toUpperCase()+parsed.adjustedType.slice(1)} Run (adjusted)`,
+        dist: parsed.adjustedDist,
+        pace: parsed.adjustedPace,
+        type: parsed.adjustedType
+      });
+      await renderNextSession();
+      document.getElementById('applyAdjBtn').textContent = "Applied ✓";
+      document.getElementById('applyAdjBtn').disabled = true;
+    });
+  }catch(e){
+    out.innerHTML = `<div class="coach-panel" style="color:var(--slate);">Couldn't get an adjustment right now. ${hasNativeStorage ? '' : 'This feature needs Claude to generate suggestions, so it will not work as a standalone file — '}Trust your judgment — when in doubt, go easier or shorter.</div>`;
+  }
+  btn.disabled = false; btn.textContent = "Get Adjustment";
+});
+
+// ---------- Strava CSV Import ----------
+let parsedImportRows = [];
+document.getElementById('parseCsvBtn').addEventListener('click', ()=>{
+  const raw = document.getElementById('csvInput').value.trim();
+  const preview = document.getElementById('importPreview');
+  const confirmBtn = document.getElementById('confirmImportBtn');
+  if (!raw){ preview.innerHTML = `<div class="empty">Paste your activities.csv content first.</div>`; return; }
+
+  const result = Papa.parse(raw, {header:true, skipEmptyLines:true});
+  const rows = result.data;
+
+  // Strava bulk export columns: "Activity Date", "Activity Type", "Distance", "Moving Time"
+  const scheduleByDate = {}; schedule.forEach(s => scheduleByDate[s.d] = s);
+  parsedImportRows = [];
+
+  rows.forEach(row=>{
+    const dateRaw = row["Activity Date"];
+    const type = row["Activity Type"];
+    if (!dateRaw || !type || !/run/i.test(type)) return;
+    const d = new Date(dateRaw);
+    if (isNaN(d)) return;
+    const iso = d.toISOString().slice(0,10);
+    let distKm = parseFloat(row["Distance"]);
+    if (!distKm) return;
+    // Strava bulk export distance is typically in meters for the raw activities.csv
+    if (distKm > 300) distKm = distKm / 1000;
+    const movingTimeSec = parseFloat(row["Moving Time"]) || null;
+    let paceStr = null;
+    if (movingTimeSec && distKm){
+      const paceMinPerKm = (movingTimeSec/60) / distKm;
+      const m = Math.floor(paceMinPerKm);
+      const s = Math.round((paceMinPerKm - m) * 60);
+      paceStr = `${m}:${s.toString().padStart(2,'0')}`;
+    }
+    const matched = scheduleByDate[iso];
+    parsedImportRows.push({date: iso, distKm: Math.round(distKm*10)/10, paceStr, matched: !!matched, plannedTitle: matched ? matched.t : null, plannedDist: matched ? matched.dist : null});
+  });
+
+  if (parsedImportRows.length === 0){
+    preview.innerHTML = `<div class="empty">No runs found. Check the paste includes the header row (Activity Date, Activity Type, Distance, Moving Time).</div>`;
+    confirmBtn.style.display = 'none';
+    return;
+  }
+
+  preview.innerHTML = parsedImportRows.map(r=>`
+    <div class="import-row">
+      <span>${r.date} — ${r.distKm}km ${r.paceStr ? '@ '+r.paceStr+'/km' : ''}</span>
+      <span class="${r.matched ? 'match' : 'nomatch'}">${r.matched ? 'matches ' + r.plannedTitle : 'no plan match'}</span>
+    </div>
+  `).join('');
+  confirmBtn.style.display = 'block';
+});
+
+document.getElementById('confirmImportBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('confirmImportBtn');
+  btn.disabled = true; btn.textContent = "Importing...";
+  let imported = 0;
+  for (const r of parsedImportRows){
+    if (!r.matched) continue;
+    const session = schedule.find(s=>s.d === r.date);
+    await setLog(r.date, {
+      date: r.date,
+      plannedTitle: session.t,
+      plannedDist: session.dist,
+      plannedPace: session.pace,
+      actualDist: r.distKm,
+      actualPace: r.paceStr,
+      rpe: null,
+      notes: "Imported from Strava"
+    });
+    imported++;
+  }
+  btn.textContent = `Imported ${imported} runs ✓`;
+  document.getElementById('csvInput').value = "";
+  document.getElementById('importPreview').innerHTML = "";
+  await renderHistory();
+  await renderConsistencyScore();
+  await renderWeekBars();
+  setTimeout(()=>{ btn.style.display='none'; }, 2000);
+});
+
+// ---------- AI Coach ----------
+document.getElementById('askCoachBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('askCoachBtn');
+  const out = document.getElementById('coachOutput');
+  btn.disabled = true;
+  btn.textContent = "Thinking";
+  out.innerHTML = `<div class="coach-panel loading-dots" style="color:var(--slate);">Reviewing your training log</div>`;
+
+  const logs = await getAllLogs();
+  const today = todayISO();
+  const upcoming = schedule.filter(s => s.d >= today).slice(0,4);
+  const past = schedule.filter(s => s.d < today).slice(-4);
+
+  const summary = {
+    raceDate: "2026-10-18",
+    goalPace: "4:50/km (~3:25:00 finish)",
+    recentLoggedRuns: logs.slice(0,8),
+    plannedSessionsRecentPast: past,
+    plannedSessionsUpcoming: upcoming
+  };
+
+  const prompt = `You are an experienced, no-nonsense marathon coach. Here is a runner's training data as JSON:
+${JSON.stringify(summary, null, 2)}
+
+Give short, specific, practical advice (under 200 words, plain text, no markdown headers). Cover: (1) how training is tracking versus the plan, (2) any pacing or fatigue concerns worth flagging based on RPE/notes, (3) one concrete adjustment or focus for the upcoming sessions. Be direct and concise, no filler, no generic encouragement.`;
+
+  try{
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{role:"user", content: prompt}]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content || []).map(c=>c.text||"").join("\n").trim();
+    out.innerHTML = `<div class="coach-panel">${text || "No response — try again."}</div>`;
+  }catch(e){
+    out.innerHTML = `<div class="coach-panel" style="color:var(--slate);">Couldn't reach the coach right now. ${hasNativeStorage ? 'Check your connection and try again.' : 'This feature needs to run inside Claude to work — when opened as a standalone file on your phone, this button will not connect. Your logged data is still saving fine though; you can always paste your training log into a Claude chat directly and ask for feedback.'}</div>`;
+  }
+  btn.disabled = false;
+  btn.textContent = "Ask Your Coach";
+});
+
+// ---------- Init ----------
+renderRaceCountdown();
+renderNextSession();
+renderSessionPicker();
+renderHistory();
+renderConsistencyScore();
+renderWeekBars();
+</script>
+</body>
+</html>
